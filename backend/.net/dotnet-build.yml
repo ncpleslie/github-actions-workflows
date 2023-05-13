@@ -1,0 +1,91 @@
+# This action will publish and pack your dotnet application and upload the artifact with the name specified and the path specified.
+
+# Example of usage:
+# build:
+#   name: Build Framework ${{ needs.version.outputs.git-version }}
+#   uses: ./.github/workflows/dotnet-build.yml
+#   needs: [unit-tests, integration-tests, version]
+#   with:
+#     artifact-name: some-name-${{ needs.version.outputs.git-version }}
+#     dotnet-version: "6.0.401"
+#     package-version: ${{ needs.version.outputs.git-version }}
+#     version: ${{ needs.version.outputs.major-minor-patch }}
+#     package-release-notes: "Built from commit ${{ github.sha }}"
+#     solution-path: "SomeSolution.SomethingElse.sln"
+
+name: Publish and Pack DotNet
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        required: true
+        type: string
+        description: "The name of the artifact."
+      dotnet-version:
+        required: false
+        type: string
+        description: "The version of dotnet."
+      output-path:
+        required: false
+        type: string
+        default: "_nupkgs"
+        description: "The output directory of the built package(s)."
+      package-release-notes:
+        required: true
+        type: string
+        description: "The package's release notes. Preferably the commit that ran this action."
+      package-version:
+        required: true
+        type: string
+        description: "The package version. Probably a value provided by GitVersion."
+      runs-on:
+        required: false
+        type: string
+        default: "windows-latest"
+        description: "The hosted runner."
+      solution-path:
+        required: true
+        type: string
+        description: "The path to the solution."
+      version:
+        required: true
+        type: string
+        description: "The version. Probably a value provided by GitVersion."
+
+jobs:
+  run-build:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Check '**/packages.lock.json' exists
+        id: check_file
+        uses: andstor/file-existence-action@v2
+        with:
+          files: "**/packages.lock.json"
+      - name: Use or Create Package Cache
+        if: steps.check_file.outputs.files_exists == 'true'
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: ${{ inputs.runs-on }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ inputs.runs-on }}-nuget
+      - name: Install Dependencies
+        run: dotnet restore
+      - name: Build Framework
+        run: |
+          dotnet publish ${{ inputs.solution-path }} --configuration Release --no-restore -p:PackageVersion=${{ inputs.package-version }} -p:Version=${{ inputs.version }} -p:AssemblyVersion=${{ inputs.version }} -p:FileVersion=${{ inputs.version }}
+      - name: Pack Framework
+        run: dotnet pack ${{ inputs.solution-path }} --configuration Release --output ${{ inputs.output-path }} --p:PackageVersion=${{ inputs.package-version }} --p:Version=${{ inputs.version }} -p:PackageReleaseNotes="${{ inputs.package-release-notes }}" --include-symbols --include-source
+      - name: Upload Framework Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.output-path }}

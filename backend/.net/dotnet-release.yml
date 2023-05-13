@@ -1,0 +1,28 @@
+# This example should be copied into your main .yml workflow and not imported.
+# It lacks the relevant input/output features to work effectively.
+# Contributions to make this an importable workflow is welcome.
+
+# This workflow will generate a GitHub Release when a GitHub release is created and tagged.
+# E.g. If you create a release from the main page of your GitHub repo, and add a tag, this workflow will be run.
+
+# Example of usage:
+# See full example
+
+release:
+  name: Release .NET ${{ needs.version.outputs.git-version }}
+  runs-on: windows-latest
+  needs: [unit-tests, integration-tests, version, build]
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Retrieve Release Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: replace-this-${{ needs.version.outputs.git-version }}
+        path: _nupkg
+    - name: Generate Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: _nupkg/*
+        body_path: ReleaseNotes.md

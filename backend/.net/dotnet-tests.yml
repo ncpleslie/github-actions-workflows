@@ -1,0 +1,93 @@
+# This action will run tests for your application based on the input `path` value and output a test report as an action artifact.
+
+# Example of usage:
+# unit-tests:
+#   strategy:
+#     matrix:
+#       os: [ubuntu-latest, windows-latest, macos-latest]
+#   name: (${{ matrix.os }}) Unit Tests ${{ needs.version.outputs.git-version }}
+#   uses: ./.github/workflows/dotnet-tests.yml
+#   needs: [version]
+#   with:
+#     path: _Tests/Tests/UnitTests/_Tests.Tests.UnitTests.csproj
+#     dotnet-version: "6.0.401"
+#     type: "unit"
+#     git-version: ${{ needs.version.outputs.git-version }}
+#     runs-on: ${{ matrix.os }}
+
+# integration-tests:
+#   strategy:
+#     matrix:
+#       os: [ubuntu-latest, windows-latest, macos-latest]
+#   name: (${{ matrix.os }}) Integration Tests ${{ needs.version.outputs.git-version }}
+#   uses: ./.github/workflows/dotnet-tests.yml
+#   needs: [version]
+#   with:
+#     path: _Tests/Tests/IntegrationTests/_Tests.Tests.IntegrationTests.csproj
+#     dotnet-version: "6.0.401"
+#     type: "integration"
+#     git-version: ${{ needs.version.outputs.git-version }}
+#     runs-on: ${{ matrix.os }}
+
+name: Run Tests Dotnet
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        required: false
+        type: string
+        description: "The version of dotnet."
+      git-version:
+        required: false
+        type: string
+        description: "The git version."
+      path:
+        required: true
+        type: string
+        description: "The path to the tests that should be run."
+      runs-on:
+        required: false
+        type: string
+        default: "windows-latest"
+        description: "The hosted runner."
+      type:
+        required: true
+        type: string
+        description: "The type of tests performed. E.g. Unit, Integration, etc."
+
+jobs:
+  run-tests:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Check '**/packages.lock.json' exists
+        id: check_file
+        uses: andstor/file-existence-action@v2
+        with:
+          files: "**/packages.lock.json"
+      - name: Use or Create Package Cache
+        if: steps.check_file.outputs.files_exists == 'true'
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: ${{ inputs.runs-on }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ inputs.runs-on }}-nuget
+      - name: Install Dependencies
+        run: dotnet restore
+      - name: Unit Test Framework
+        run: dotnet test ${{ inputs.path }} --logger trx --results-directory "TestResults-${{ inputs.dotnet-version }}"
+      - name: Upload Framework Test Results
+        uses: actions/upload-artifact@v3
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
+        with:
+          name: dotnet-test-results-${{ inputs.type }}-${{ inputs.git-version }}
+          path: TestResults-${{ inputs.dotnet-version }}

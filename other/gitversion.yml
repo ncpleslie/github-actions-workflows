@@ -1,0 +1,35 @@
+# This example should be copied into your main .yml workflow and not imported.
+# It lacks the relevant input/output features to work effectively.
+# Contributions to make this an importable workflow is welcome.
+
+# This action will generate a git version number that can be used by your actions
+# More on gitversion and its importance can be found here https://gitversion.net/docs/
+
+# Example of usage:
+#    print-git-version:
+#     name: GitVersion - ${{ needs.version.outputs.git-version }}
+#     runs-on: ubuntu-latest
+#     needs: [version]
+#     steps:
+#       - run: echo ${{ needs.version.outputs.git-version }}
+
+version:
+  name: Version Number
+  runs-on: windows-latest
+  outputs:
+    git-version: ${{ steps.gitversion.outputs.nuGetVersionV2 }}
+    major-minor-patch: ${{ steps.gitversion.outputs.majorMinorPatch }}
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0.9.15
+      with:
+        versionSpec: "5.5.0"
+    - name: Determine Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.15
+      with:
+        useConfigFile: true

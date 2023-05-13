@@ -16,11 +16,11 @@ This repo contains a collection of useful, reusable, GitHub Actions that can be 
 
 ## TL:DR - Got any full working examples I can just copy-paste?
 
-In the [full-examples](./full-examples/) directory you will find some complete examples that could be simply copy and pasted into your application.
+In the [full-examples](./full-examples/) directory you will find some complete examples that could be simply copy and pasted into your application. Just give us a star.
 
-## What is GitHub Actions?
+## What are GitHub Actions?
 
-GitHub Actions is a way of writing our automated pipelines to test, build, deploy our code. Among many other things. More can be found [here](https://docs.github.com/en/actions) along with the official documentation.
+GitHub Actions are a way of writing our automated pipelines to test, build, deploy our code. Among many other things. More can be found [here](https://docs.github.com/en/actions) along with the official documentation.
 
 The official description is:
 
